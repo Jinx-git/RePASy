@@ -19,8 +19,9 @@ class RecDataset(data.Dataset):
         img_path = self.file_list[index]
         img = np.array(Image.open(img_path))
         img = self.transform(img)
-        img = img / 255
-        label = (float(img_path[27: 31]) - 0.52) / 0.09
+        img = img / 255.0
+        label = (float(img_path[22:27]) - 0.5) / 0.1
+        #print(label)
         #label = (float(img_path[27:31]))
         label = np.array(label)
         return img, label

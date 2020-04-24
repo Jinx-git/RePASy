@@ -6,12 +6,13 @@ from torch.utils.data import DataLoader
 import torchvision
 import matplotlib.pyplot as plt
 from ReRASy import Dataset
+from tqdm import tqdm
 import numpy as np
 
 BATCH_SIZE = 32
 WEIGHT_DECAY = 0.005
 LEARNING_RATE = 0.0003
-EPOCH = 500
+EPOCH = 300
 
 # trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0,), (1,))])
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
@@ -22,7 +23,7 @@ trainloader = DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_work
 testset = torchvision.datasets.MNIST(root=PATH, train=False, download=True, transform=trans)
 testloader = DataLoader(testset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 """
-train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/Data/**/*.png"), transform=trans)
+train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/A6/img/**/**/*.png"), transform=trans)
 trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
 class Net(nn.Module):
@@ -32,10 +33,11 @@ class Net(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.pool = nn.MaxPool2d(2, stride=2)
 
-        self.conv1 = nn.Conv2d(1, 16, 15)
-        self.conv2 = nn.Conv2d(16, 32, 10)
+        self.conv1 = nn.Conv2d(1, 32, 15)
+        self.conv2 = nn.Conv2d(32, 32, 16)
+        self.conv3 = nn.Conv2d(32, 64, 2)
 
-        self.fc1 = nn.Linear(32 * 24 * 24, 1)
+        self.fc1 = nn.Linear(64 * 10 * 10, 1)
         self.fc2 = nn.Linear(120, 1)
 
     def forward(self, x):
@@ -43,6 +45,9 @@ class Net(nn.Module):
         x = self.relu(x)
         x = self.pool(x)
         x = self.conv2(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        x = self.conv3(x)
         x = self.relu(x)
         x = self.pool(x)
         x = x.view(x.size()[0], -1)
@@ -72,7 +77,7 @@ for epoch in range(EPOCH):
     t = 0
 
     net.train()
-    for (inputs, labels) in trainloader:
+    for (inputs, labels) in tqdm(trainloader):
         #inputs = torch.DoubleTensor(inputs)
         #labels = torch.DoubleTensor(labels)
         inputs, labels = inputs.to(device), labels.to(device)
@@ -84,7 +89,7 @@ for epoch in range(EPOCH):
         loss.backward()
         optimizer.step()
         sum_loss += loss.item() * labels.size(0)
-        sum_mae += mae_batch.item() * labels.size(0)
+        sum_mae += mae_batch.item() * labels.size(0) * 0.1
         t += labels.size(0)
     print("train loss:{:.7g}  train mae:{:.7g}".format(sum_loss / len(trainloader.dataset), sum_mae / len(trainloader.dataset)))
     train_loss_value.append(sum_loss / len(trainloader.dataset))
