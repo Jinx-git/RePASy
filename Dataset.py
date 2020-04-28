@@ -24,9 +24,10 @@ class RecDataset(data.Dataset):
         img = self.transform(img)
         img = img / 255.0
         label = (float(img_path[22:27]) - 0.5) / 0.1
+        note_oh = one_hot(torch.tensor(self.note.index(img_path[15:17])), num_classes=13)
         note = self.note.index(img_path[15:17])
         #print(note)
         #print(label)
         #label = (float(img_path[27:31]))
         label = np.array(label)
-        return img, label, note
+        return img, label, note_oh.float(), note
