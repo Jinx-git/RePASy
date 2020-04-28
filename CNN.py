@@ -9,10 +9,10 @@ from ReRASy import Dataset
 from tqdm import tqdm
 import numpy as np
 
-BATCH_SIZE = 32
+BATCH_SIZE = 512
 WEIGHT_DECAY = 0.005
 LEARNING_RATE = 0.0003
-EPOCH = 300
+EPOCH = 100
 
 # trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0,), (1,))])
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
@@ -23,7 +23,7 @@ trainloader = DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_work
 testset = torchvision.datasets.MNIST(root=PATH, train=False, download=True, transform=trans)
 testloader = DataLoader(testset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 """
-train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/*.png"), transform=trans)
+train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0[01234]?.png"), transform=trans)
 print(len(train_dataset))
 trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
@@ -33,18 +33,16 @@ class Net(nn.Module):
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
         self.pool = nn.MaxPool2d(2, stride=2)
+        self.logsoft = nn.LogSoftmax(dim=-1)
         self.Dropout = nn.Dropout(p=0.5, inplace=False)
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.conv2 = nn.Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.conv4 = nn.Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.conv5 = nn.Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.conv6 = nn.Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        self.conv1 = nn.Conv2d(1, 32, 32)
+        self.conv2 = nn.Conv2d(32, 32, 30)
+        self.conv3 = nn.Conv2d(32, 64, 15)
 
-
-        self.fc1 = nn.Linear(in_features=128*16*16, out_features=4096)
+        self.fc1 = nn.Linear(in_features=64*20*20, out_features=4096)
         self.fc2 = nn.Linear(4096, 1)
-        self.fc3 = nn.Linear(4096, 13)
+        self.fc3 = nn.Linear(4096, 4096)
+        self.fc4 = nn.Linear(4096, 13)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -55,23 +53,18 @@ class Net(nn.Module):
 
         x = self.conv3(x)
         x = self.relu(x)
-        x = self.conv4(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv5(x)
-        x = self.relu(x)
-        x = self.conv6(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
+        #print(x.size())
         x = x.view(x.size()[0], -1)
         x = self.fc1(x)
+        x = self.relu(x)
+
         x1 = self.fc2(x)
         x1 = self.sigmoid(x1)
+
         x2 = self.fc3(x)
-
-
+        x2 = self.relu(x2)
+        x2 = self.fc4(x2)
+        #x2 = self.logsoft(x2)
 
         return [x1, x2]
 
@@ -79,9 +72,11 @@ class Net(nn.Module):
 device = torch.device("cuda:0")
 net = Net()
 #net.float()
+weight = torch.tensor([5200, 4200, 5200, 6200, 6000, 8000, 7000, 7000, 6000, 6000, 7000, 6000, 6000])
+weight = torch.tensor(8000.0) / weight
 net = net.to(device)
 criterion1 = nn.MSELoss()
-criterion2 = nn.CrossEntropyLoss()
+criterion2 = nn.CrossEntropyLoss(weight=weight.to(device))
 
 mae = nn.L1Loss()
 optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
@@ -110,7 +105,7 @@ for epoch in range(EPOCH):
 
         mae_batch = mae(outputs[0], labels.float().view(-1, 1))
         _, preds = torch.max(outputs[1], 1)
-
+        #print(preds, notes)
         optimizer.zero_grad()
         #loss1.backward(retain_graph=True)
         loss2.backward(retain_graph=True)
