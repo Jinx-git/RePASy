@@ -23,7 +23,7 @@ trainloader = DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_work
 testset = torchvision.datasets.MNIST(root=PATH, train=False, download=True, transform=trans)
 testloader = DataLoader(testset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 """
-train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/F5/img/**/**/*.png"), transform=trans)
+train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/*.png"), transform=trans)
 print(len(train_dataset))
 trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
@@ -112,8 +112,8 @@ for epoch in range(EPOCH):
         _, preds = torch.max(outputs[1], 1)
 
         optimizer.zero_grad()
-        loss1.backward()
-        loss2.backward()
+        #loss1.backward(retain_graph=True)
+        loss2.backward(retain_graph=True)
         optimizer.step()
 
         sum_loss1 += loss1.item() * labels.size(0)
@@ -125,9 +125,9 @@ for epoch in range(EPOCH):
     train_loss1_value.append(sum_loss1 / len(trainloader.dataset))
     train_mae_value.append(sum_mae / len(trainloader.dataset))
 
-    print("[Note] train loss:{:.7g}  train acc:{:.7g}".format(sum_loss2 / len(trainloader.dataset), sum_corrects / len(trainloader.dataset)))
+    print("[Note] train loss:{:.7g}  train acc:{:.7g}".format(sum_loss2 / len(trainloader.dataset), sum_corrects.double() / len(trainloader.dataset)))
     train_loss2_value.append(sum_loss2 / len(trainloader.dataset))
-    train_acc_value.append(sum_corrects / len(trainloader.dataset))
+    train_acc_value.append(sum_corrects.double() / len(trainloader.dataset))
 """
     sum_loss = 0.0
     sum_correct = 0
