@@ -9,46 +9,46 @@ from ReRASy import Dataset
 from tqdm import tqdm
 import numpy as np
 
-BATCH_SIZE = 32
+BATCH_SIZE = 256
 WEIGHT_DECAY = 0.005
 LEARNING_RATE = 0.001
-EPOCH = 2
+EPOCH = 50
 test = True
 train = "Flow"
 true_note = True
 
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0[0134579]?.png"), transform=trans)
+train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?[0134579].png"), transform=trans)
 print("train data : ", len(train_dataset))
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
-val_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0[26]?.png"), transform=trans)
+val_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?[26].png"), transform=trans)
 print("val data : ", len(val_dataset))
-val_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-test_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/08?.png"), transform=trans)
+test_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?8.png"), transform=trans)
 print("test data : ", len(test_dataset))
-test_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
 dataloaders_dict = {"train": train_loader, "val": val_loader}
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv = nn.Sequential(nn.Conv2d(1, 16, 15),
-                                  nn.BatchNorm2d(16),
+        self.conv = nn.Sequential(nn.Conv1d(1, 4, 8),
+                                  nn.BatchNorm1d(4),
                                   nn.ReLU(),
-                                  nn.MaxPool2d(2, stride=2),
-                                  nn.Conv2d(16, 32, 10),
+                                  nn.Conv1d(4, 8, 4),
+                                  # nn.BatchNorm1d(8),
                                   nn.ReLU(),
-                                  nn.MaxPool2d(2, stride=2))
+                                  )
 
-        self.note = nn.Sequential(nn.Linear(32*24*24, 4096),
+        self.note = nn.Sequential(nn.Linear(944, 2048),
                                   nn.ReLU(),
                                   nn.Dropout(p=0.5),
-                                  nn.Linear(4096, 13))
+                                  nn.Linear(2048, 13))
 
-        self.flow1 = nn.Sequential(nn.Linear(32*24*24, 10),
+        self.flow1 = nn.Sequential(nn.Linear(944, 10),
                                    nn.ReLU())
 
         self.flow2 = nn.Sequential(nn.Linear(23, 1),
@@ -69,8 +69,8 @@ class Net(nn.Module):
 
 
 device = torch.device("cuda:0")
-net = Net()
-# net = torch.load("models/model-30-epoch")
+# net = Net()
+net = torch.load("models/model-50-epoch")
 net = net.to(device)
 
 criterion1 = nn.MSELoss()
@@ -78,37 +78,46 @@ weight = torch.tensor([5200, 4200, 5200, 6200, 6000, 8000, 7000, 7000, 6000, 600
 weight = torch.tensor(8000.0) / weight
 criterion2 = nn.CrossEntropyLoss(weight=weight.to(device))
 mae = nn.L1Loss()
+#for name, param in net.named_parameters():
+    #print(name)
 
 params_to_update = []
-update_param_names1 = ["conv.0.weight", "conv.0.bias", "conv.1.weight", "conv.1.bias", "conv.4.weight", "conv.4.bias",
-                       "flow1.0.weight", "flow1.0.bias", "flow2.0.weight", "flow2.0.bias"]
-update_param_names2 = ["note.0.weight", "note.0.bias", "note.3.weight", "note.3.bias"]
+#update_param_names1 = ["conv.0.weight", "conv.0.bias", "conv.1.weight", "conv.1.bias", "conv.4.weight", "conv.4.bias",
+                       #"flow1.0.weight", "flow1.0.bias", "flow2.0.weight", "flow2.0.bias"]
+update_param_names1 = ["flow1", "flow2"]
+update_param_names2 = ["note", "conv"]
 if train == "Flow":
     update_param_names = update_param_names1
 elif train == "Pitch":
     update_param_names = update_param_names2
 
 for name, param in net.named_parameters():
-    if name in update_param_names:
-        param.requires_grad = True
-        params_to_update.append(param)
-        print("update:", name)
-    else:
-        param.requires_grad = False
-        print("N:", name)
+    t = 0
+    for i in update_param_names:
+        if i in name:
+            param.requires_grad = True
+            params_to_update.append(param)
+            print("update:", name)
+            t = 1
+            break
+    if t:
+        continue
+    param.requires_grad = False
+    print("N:", name)
 
 optimizer = optim.Adam(params=params_to_update, lr=LEARNING_RATE)
 
-loss1_value = {"train": [], "val": [], "test": []}
-loss2_value = {"train": [], "val": [], "test": []}
-mae_value = {"train": [], "val": [], "test": []}
-acc_value = {"train": [], "val": [], "test": []}
+loss1_value = {"train": [0.], "val": [], "test": []}
+loss2_value = {"train": [0.], "val": [], "test": []}
+mae_value = {"train": [0.], "val": [], "test": []}
+acc_value = {"train": [0.], "val": [], "test": []}
 
 for epoch in range(EPOCH):
     print("Epoch {}/{}".format(epoch + 1, EPOCH))
     print('-------------')
 
     for phase in ["train", "val"]:
+        # print(phase)
         if phase == "train":
             net.train()  # モデルを訓練モードに
         else:
@@ -130,7 +139,7 @@ for epoch in range(EPOCH):
 
             outputs = net(inputs, notes_oh, true_note)
             # print(outputs, labels)
-            if train == 1:
+            if train == "Flow":
                 loss1 = criterion1(outputs[0], labels.float().view(-1, 1))
                 mae_batch = mae(outputs[0], labels.float().view(-1, 1))
                 if phase == "train":
@@ -139,7 +148,7 @@ for epoch in range(EPOCH):
                 sum_loss1 += loss1.item() * labels.size(0)
                 sum_mae += mae_batch.item() * labels.size(0) * 0.1
 
-            elif train == 2:
+            elif train == "Pitch":
                 loss2 = criterion2(outputs[1], notes)
                 _, preds = torch.max(outputs[1], 1)
                 if phase == "train":
@@ -151,19 +160,22 @@ for epoch in range(EPOCH):
         if train == "Flow":
             e_loss = sum_loss1 / len(dataloaders_dict[phase].dataset)
             e_mae = sum_mae / len(dataloaders_dict[phase].dataset)
-            print("[Flow] train loss:{:.7g}  train mae:{:.7g}".format(e_loss, e_mae))
+            print("[Flow : {}] loss:{:.7g}  mae:{:.7g}".format(phase, e_loss, e_mae))
             loss1_value[phase].append(e_loss)
             mae_value[phase].append(e_mae)
         elif train == "Pitch":
             e_loss = sum_loss2 / len(dataloaders_dict[phase].dataset)
             e_acc = sum_corrects.double() / len(dataloaders_dict[phase].dataset)
-            print("[Pitch] train loss:{:.7g}  train acc:{:.7g}".format(e_loss, e_acc))
+            print("[Pitch : {}] loss:{:.7g}  acc:{:.7g}".format(phase, e_loss, e_acc))
             loss2_value[phase].append(e_loss)
             acc_value[phase].append(e_acc)
 
+
+
     if not (epoch + 1) % 5:
         torch.save(net, "model-{}-epoch".format(epoch + 1))
-
+        LEARNING_RATE = LEARNING_RATE / 2.
+        optimizer = optim.Adam(params=params_to_update, lr=LEARNING_RATE)
 """
     sum_loss = 0.0
     sum_correct = 0
@@ -187,7 +199,7 @@ plt.figure(figsize=(6, 6))      #グラフ描画用
 
 #以下グラフ描画
 if train == "Flow":
-    plt.plot(range(1, EPOCH), loss1_value["train"])
+    plt.plot(range(1, EPOCH), loss1_value["train"][1:])
     plt.plot(range(EPOCH), loss1_value["val"], c='#00ff00')
     plt.xlim(0, EPOCH)
     #plt.ylim(0, np.max(train_loss_value))
@@ -199,7 +211,7 @@ if train == "Flow":
     plt.savefig("loss1_image.png")
     plt.clf()
 
-    plt.plot(range(1, EPOCH), mae_value["train"])
+    plt.plot(range(1, EPOCH), mae_value["train"][1:])
     plt.plot(range(EPOCH), mae_value["val"], c='#00ff00')
     plt.xlim(0, EPOCH)
     #plt.ylim(0, np.max(train_loss_value))
@@ -212,7 +224,7 @@ if train == "Flow":
     plt.clf()
 
 elif train == "Pitch":
-    plt.plot(range(1, EPOCH), loss2_value["train"])
+    plt.plot(range(1, EPOCH), loss2_value["train"][1:])
     plt.plot(range(EPOCH), loss2_value["val"], c='#00ff00')
     plt.xlim(0, EPOCH)
     #plt.ylim(0, np.max(train_loss_value))
@@ -224,7 +236,7 @@ elif train == "Pitch":
     plt.savefig("loss2_image.png")
     plt.clf()
 
-    plt.plot(range(1, EPOCH), acc_value["train"])
+    plt.plot(range(1, EPOCH), acc_value["train"][1:])
     plt.plot(range(EPOCH), acc_value["val"], c='#00ff00')
     plt.xlim(0, EPOCH)
     #plt.ylim(0, np.max(acc_value["val"]))

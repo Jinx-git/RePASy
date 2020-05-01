@@ -22,7 +22,9 @@ class RecDataset(data.Dataset):
         img_path = self.file_list[index]
         img = np.array(Image.open(img_path))
         img = self.transform(img)
-        img = img / 255.0
+        # print(img)
+        img = img.sum(axis=2) / 255.0 / 128.0
+        # img = img[:, :, 0]
         label = (float(img_path[22:27]) - 0.5) / 0.1
         note_oh = one_hot(torch.tensor(self.note.index(img_path[15:17])), num_classes=13)
         note = self.note.index(img_path[15:17])
