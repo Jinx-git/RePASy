@@ -13,27 +13,29 @@ from torchviz import make_dot
 
 BATCH_SIZE = 1
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-test_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/A6/img/**/**/0?8.png"), transform=trans)
+test_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?8.png"), transform=trans)
 print("test data : ", len(test_dataset))
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv = nn.Sequential(nn.Conv1d(1, 4, 8),
-                                  nn.BatchNorm1d(4),
+        self.conv = nn.Sequential(nn.Conv2d(1, 4, 8),
+                                  nn.BatchNorm2d(4),
                                   nn.ReLU(),
-                                  nn.Conv1d(4, 8, 4),
-                                  # nn.BatchNorm1d(8),
+                                  nn.MaxPool2d(2, stride=2),
+                                  nn.Conv2d(4, 8, 8),
+                                  nn.BatchNorm2d(8),
                                   nn.ReLU(),
+                                  nn.MaxPool2d(2, stride=2)
                                   )
 
-        self.note = nn.Sequential(nn.Linear(944, 2048),
+        self.note = nn.Sequential(nn.Linear(5408, 2048),
                                   nn.ReLU(),
                                   nn.Dropout(p=0.5),
                                   nn.Linear(2048, 13))
 
-        self.flow1 = nn.Sequential(nn.Linear(944, 10),
+        self.flow1 = nn.Sequential(nn.Linear(5408, 10),
                                    nn.ReLU())
 
         self.flow2 = nn.Sequential(nn.Linear(23, 1),
@@ -54,7 +56,7 @@ class Net(nn.Module):
 
 device = torch.device("cuda:0")
 # net = Net()
-net = torch.load("models/compM/model-50-epoch")
+net = torch.load("models/conv2d_FP/Flow2cmp/model-50-epoch")
 net = net.to(device)
 
 criterion1 = nn.MSELoss()

@@ -13,9 +13,10 @@ BATCH_SIZE = 256
 WEIGHT_DECAY = 0.005
 LEARNING_RATE = 0.001
 EPOCH = 50
-test = True
+LR_DOWN_EPOCH = 5
 train = "Flow"
 true_note = True
+model = "models/conv2d_FP/Pitch/model-50-epoch"
 
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?[0134579].png"), transform=trans)
@@ -35,20 +36,22 @@ dataloaders_dict = {"train": train_loader, "val": val_loader}
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv = nn.Sequential(nn.Conv1d(1, 4, 8),
-                                  nn.BatchNorm1d(4),
+        self.conv = nn.Sequential(nn.Conv2d(1, 4, 8),
+                                  nn.BatchNorm2d(4),
                                   nn.ReLU(),
-                                  nn.Conv1d(4, 8, 4),
-                                  # nn.BatchNorm1d(8),
+                                  nn.MaxPool2d(2, stride=2),
+                                  nn.Conv2d(4, 8, 8),
+                                  nn.BatchNorm2d(8),
                                   nn.ReLU(),
+                                  nn.MaxPool2d(2, stride=2)
                                   )
 
-        self.note = nn.Sequential(nn.Linear(944, 2048),
+        self.note = nn.Sequential(nn.Linear(5408, 2048),
                                   nn.ReLU(),
                                   nn.Dropout(p=0.5),
                                   nn.Linear(2048, 13))
 
-        self.flow1 = nn.Sequential(nn.Linear(944, 10),
+        self.flow1 = nn.Sequential(nn.Linear(5408, 10),
                                    nn.ReLU())
 
         self.flow2 = nn.Sequential(nn.Linear(23, 1),
@@ -70,7 +73,7 @@ class Net(nn.Module):
 
 device = torch.device("cuda:0")
 # net = Net()
-net = torch.load("models/model-50-epoch")
+net = torch.load(model)
 net = net.to(device)
 
 criterion1 = nn.MSELoss()
@@ -170,10 +173,10 @@ for epoch in range(EPOCH):
             loss2_value[phase].append(e_loss)
             acc_value[phase].append(e_acc)
 
-
-
     if not (epoch + 1) % 5:
         torch.save(net, "model-{}-epoch".format(epoch + 1))
+
+    if not (epoch + 1) % LR_DOWN_EPOCH:
         LEARNING_RATE = LEARNING_RATE / 2.
         optimizer = optim.Adam(params=params_to_update, lr=LEARNING_RATE)
 """
