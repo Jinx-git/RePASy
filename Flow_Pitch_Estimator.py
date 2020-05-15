@@ -5,7 +5,7 @@ import glob
 from torch.utils.data import DataLoader
 import torchvision
 import matplotlib.pyplot as plt
-from ReRASy import Dataset
+from RePASy import Dataset
 from tqdm import tqdm
 import numpy as np
 

@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from RePASy import Dataset
 from tqdm import tqdm
 import numpy as np
-from torchviz import make_dot
 
 BATCH_SIZE = 1
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
@@ -53,6 +52,7 @@ class Net(nn.Module):
             # print(note_oh)
             flow = self.flow2(torch.cat([flow, torch.eye(13)[note_oh].to("cuda:0")], dim=1))
         return flow, note
+
 
 device = torch.device("cuda:0")
 # net = Net()
