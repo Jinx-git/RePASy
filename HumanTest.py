@@ -1,21 +1,44 @@
-import torch
 import torch.onnx
 import torch.nn as nn
-import torch.optim as optim
-import glob
 from torch.utils.data import DataLoader
+from torch.utils import data
 import torchvision
-import matplotlib.pyplot as plt
-from RePASy import Dataset
-from tqdm import tqdm
+from PIL import Image
+import glob
 import numpy as np
-from torchviz import make_dot
+import torch
+
+
+class RecDataset(data.Dataset):
+    def __init__(self, file_list, transform=None, phase="train"):
+        self.file_list = file_list
+        self.transform = transform
+        self.phase = phase
+        self.note = ["C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6", "F6", "G6", "A6"]
+
+    def __len__(self):
+        return len(self.file_list)
+
+    def __getitem__(self, index):
+
+        img_path = self.file_list[index]
+        img = np.array(Image.open(img_path))
+        # flow = int(img_path[13:14])
+        flow = 1
+        img = self.transform(img)
+        img = img / 255.0
+        img_number = int(img_path[15:18])
+        return img, flow, img_number
+
 
 BATCH_SIZE = 1
+ACC_NUMBER = 0
+
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-test_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?8.png"), transform=trans)
+test_dataset = RecDataset(file_list=glob.glob("HumanData/G5te/**"), transform=trans)
 print("test data : ", len(test_dataset))
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -54,11 +77,12 @@ class Net(nn.Module):
             flow = self.flow2(torch.cat([flow, torch.eye(13)[note_oh].to("cuda:0")], dim=1))
         return flow, note
 
+
 device = torch.device("cuda:0")
 # net = Net()
 net = torch.load("models/conv2d_FP/Flow2cmp/model-50-epoch")
 net = net.to(device)
-
+torch.save(net.state_dict(), "testmodel.m")
 criterion1 = nn.MSELoss()
 weight = torch.tensor([5200, 4200, 5200, 6200, 6000, 8000, 7000, 7000, 6000, 6000, 7000, 6000, 6000])
 weight = torch.tensor(8000.0) / weight
@@ -70,36 +94,11 @@ for name, param in net.named_parameters():
 
 #print(net)
 net.eval()
-sum_loss1 = 0.0
-sum_loss2 = 0.0
-sum_mae = 0.0
-sum_corrects = 0
-print("Tflow, Pflow, MAE, Tpitch, Ppitch")
-for (inputs, labels, notes_oh, notes) in test_loader:
-    inputs, labels = inputs.to(device), labels.to(device),
-    notes_oh, notes = notes_oh.to(device), notes.to(device)
-
+print("ImageNum, FlowNum, Pflow, Tpitch, Ppitch")
+notes_oh = torch.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]).to(device)
+for inputs, flows, img_numbers in test_loader:
+    print(inputs)
+    inputs = inputs.to(device)
     outputs = net(inputs, notes_oh, False)
-
-    loss1 = criterion1(outputs[0], labels.float().view(-1, 1))
-    loss2 = criterion2(outputs[1], notes)
     _, preds = torch.max(outputs[1], 1)
-    mae_batch = mae(outputs[0], labels.float().view(-1, 1))
-    sum_loss1 += loss1.item() * labels.size(0)
-    sum_mae += mae_batch.item() * labels.size(0) * 0.1
-    sum_loss2 += loss2.item() * labels.size(0)
-    sum_corrects += torch.sum(preds == notes.data)
-    print("{:.7g} , {:.7g} , {:.7g} ,{} , {}".format(labels.item()*0.1+0.5, outputs[0].item()*0.1+0.5, mae_batch.item() * labels.size(0) * 0.1, notes.item(), preds.item()))
-
-
-e_loss = sum_loss1 / len(test_loader.dataset)
-e_mae = sum_mae / len(test_loader.dataset)
-print("[Flow : {}] loss:{:.7g}  mae:{:.7g}".format("Test", e_loss, e_mae))
-e_loss = sum_loss2 / len(test_loader.dataset)
-e_acc = sum_corrects.double() / len(test_loader.dataset)
-print("[Pitch : {}] loss:{:.7g}  acc:{:.7g}".format("Test", e_loss, e_acc))
-
-
-
-
-
+    print("{}, {}, {:.7g} ,{} , {}".format(img_numbers.item(),flows.item(), outputs[0].item()*0.1+0.5, ACC_NUMBER, preds.item()))
