@@ -3,10 +3,11 @@ import torch.onnx
 import torch.nn as nn
 import torchvision
 import numpy as np
-import sounddevice as sd
 import librosa
-from PIL import Image
+import pyaudio
 import matplotlib.pyplot as plt
+import sounddevice as sd
+from PIL import Image
 
 
 class Net(nn.Module):
@@ -43,21 +44,21 @@ class Net(nn.Module):
         return flow, note
 
 
-def extract_logmel():
-    audio = sd.rec(int(0.5 * 44100))
-    sd.wait()
-    logmel = librosa.feature.melspectrogram(y=audio.reshape(-1), sr=44100, n_mels=128, hop_length=173).T[0:128][:]
-    logmel = logmel / logmel.max() * 255 // 1
-    image = Image.fromarray(logmel.T)
-    image = image.convert("L")
-    image.save("test.png")
-    return image
+def extract_logmel(audio):
+    # print(audio.shape)
+    logmel = librosa.feature.melspectrogram(y=np.array(audio), sr=44100, n_mels=128, hop_length=173).T
+    return logmel
 
-print(sd.query_devices())
-sd.default.samplerate = 44100
-sd.default.channels = 1
-dev = [1, 3]
 
+p = pyaudio.PyAudio()
+stream = p.open(format=pyaudio.paFloat32,
+                channels=1,
+                rate=44100,
+                input=True,
+                frames_per_buffer=1024,
+                input_device_index=1)
+for x in range(0, p.get_device_count()):
+        print(p.get_device_info_by_index(x))
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 
 net = Net()
@@ -75,14 +76,32 @@ plt.figure(figsize=(10,6))
 plt.ylim([0.5, 0.6])
 lines, = plt.plot(x, arr) #グラフオブジェクトを受け取る
 i = 49
-while 1:
-    spec = np.array(extract_logmel())
-    spec = trans(spec)
-    spec = spec / 255.0
-    outputs = net(spec.reshape(-1, 1, 128, 128))
+spec = np.zeros((128, 128), dtype=np.float)
+dev = [1, 3]
+sd.default.channels = 1
+sd.default.device = dev
+sd.default.samplerate = 44100
+xxx = 5
+while True:
+    record = sd.rec(int(44100 * 0.1))
+    sd.wait()
+    # audio = stream.read(int(44100 * 0.1))
+    # audio = np.frombuffer(audio, dtype=np.float)
+    spectrum = np.array([extract_logmel(record.reshape(-1))]).reshape(-1, 128)[3:23, :]
+    # print(spectrum.shape)
+    spec = np.append(spec, spectrum, axis=0)
+    spec = spec[20:, :]
+    spec_input = spec / spec.max() * 255.0 // 1
+    # image = Image.fromarray(spectrum / spectrum.max() * 255 // 1)
+    # image = image.convert("L")
+    image = Image.fromarray(spec_input)
+    image = image.convert("L")
+    image.save("test.png")
+    spec_tensor = trans(np.array(image).T)
+    spec_tensor = spec_tensor / 255.0
+    outputs = net(spec_tensor.reshape(-1, 1, 128, 128))
     _, preds = torch.max(outputs[1], 1)
     pred = note[preds.item()]
-    # print(outputs[0])
     if i < 39:
         label.append(pred)
         label = label[1:]
@@ -98,7 +117,9 @@ while 1:
 
     arr = np.append(arr, outputs[0].item()*0.1+0.5)
     arr = arr[1:]
-    lines.set_data(x, arr)  # データ更新
-    plt.xticks(x, label)
-    plt.pause(0.0001)
-    print("\r{}:{}".format(pred, outputs[0].item() * 0.1 + 0.5), end="")
+    if xxx == 0:
+        lines.set_data(x, arr)  # データ更新
+        plt.xticks(x, label)
+        plt.pause(0.0001)
+        xxx = 5
+    xxx -= 1
