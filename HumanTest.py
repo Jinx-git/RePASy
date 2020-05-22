@@ -23,19 +23,20 @@ class RecDataset(data.Dataset):
 
         img_path = self.file_list[index]
         img = np.array(Image.open(img_path))
-        # flow = int(img_path[13:14])
-        flow = 1
+        flow = str(img_path[22])
         img = self.transform(img)
+        note = self.note.index(img_path[14:16])
         img = img / 255.0
-        img_number = int(img_path[15:18])
-        return img, flow, img_number
+        img_number = int(img_path[24:27])
+        mic = str(img_path[17:21])
+        return img, flow, img_number, note, mic
 
 
 BATCH_SIZE = 1
 ACC_NUMBER = 0
 
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-test_dataset = RecDataset(file_list=glob.glob("HumanData/G5te/**"), transform=trans)
+test_dataset = RecDataset(file_list=glob.glob("HumanData/img/**/**/**/**.png"), transform=trans)
 print("test data : ", len(test_dataset))
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
@@ -74,15 +75,14 @@ class Net(nn.Module):
         else:
             _, note_oh = torch.max(note.data, 1)
             # print(note_oh)
-            flow = self.flow2(torch.cat([flow, torch.eye(13)[note_oh].to("cuda:0")], dim=1))
+            flow = self.flow2(torch.cat([flow, torch.eye(13)[note_oh].to("cpu")], dim=1))
         return flow, note
 
 
-device = torch.device("cuda:0")
-# net = Net()
-net = torch.load("models/conv2d_FP/Flow2cmp/model-50-epoch")
-net = net.to(device)
-torch.save(net.state_dict(), "testmodel.m")
+device = torch.device("cpu")
+net = Net()
+net.load_state_dict(torch.load("testmodel.m", map_location=torch.device("cpu")))
+net.eval()
 criterion1 = nn.MSELoss()
 weight = torch.tensor([5200, 4200, 5200, 6200, 6000, 8000, 7000, 7000, 6000, 6000, 7000, 6000, 6000])
 weight = torch.tensor(8000.0) / weight
@@ -94,11 +94,11 @@ for name, param in net.named_parameters():
 
 #print(net)
 net.eval()
-print("ImageNum, FlowNum, Pflow, Tpitch, Ppitch")
+print("mic, ImageNum, Flow, Pflow, Tpitch, Ppitch")
 notes_oh = torch.tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]).to(device)
-for inputs, flows, img_numbers in test_loader:
-    print(inputs)
+for inputs, flows, img_numbers, notes, mic in test_loader:
+    # print(inputs)
     inputs = inputs.to(device)
     outputs = net(inputs, notes_oh, False)
     _, preds = torch.max(outputs[1], 1)
-    print("{}, {}, {:.7g} ,{} , {}".format(img_numbers.item(),flows.item(), outputs[0].item()*0.1+0.5, ACC_NUMBER, preds.item()))
+    print("{}, {}, {}, {:.7g} ,{} , {}".format(mic[0], img_numbers.item(), flows[0], outputs[0].item()*0.1+0.5, notes.item(), preds.item()))
