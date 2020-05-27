@@ -5,9 +5,8 @@ import glob
 from torch.utils.data import DataLoader
 import torchvision
 import matplotlib.pyplot as plt
-from RePASy import Dataset_npy as Dataset
+from RePASy.train_npy import Dataset_npy as Dataset
 from tqdm import tqdm
-import numpy as np
 
 BATCH_SIZE = 64
 WEIGHT_DECAY = 0.005

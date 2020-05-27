@@ -1,14 +1,10 @@
 import torch
 import torch.onnx
 import torch.nn as nn
-import torch.optim as optim
 import glob
 from torch.utils.data import DataLoader
 import torchvision
-import matplotlib.pyplot as plt
-from RePASy import Dataset
-from tqdm import tqdm
-import numpy as np
+from RePASy.train_image import Dataset
 
 BATCH_SIZE = 1
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])

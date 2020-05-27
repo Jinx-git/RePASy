@@ -55,4 +55,4 @@ def data_list(path, sr, img_path, n_mels=128):
             image.save("{}/{}/mic2/{}/{:03d}.png".format(img_path, wavname[14:16], wavname[16], x))
             x += 1
 
-data_list("HumanData/WAV/**", SAMPLING_FREQUENCY, "HumanData/img")
+data_list("HumanData/WAV/**", SAMPLING_FREQUENCY, "../HumanData/img")
