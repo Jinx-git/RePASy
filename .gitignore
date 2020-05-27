@@ -10,3 +10,5 @@ HumanData/
 *.m
 
 ImageData_old/
+
+*.png
