@@ -10,24 +10,24 @@ from tqdm import tqdm
 
 BATCH_SIZE = 64
 WEIGHT_DECAY = 0.005
-LEARNING_RATE = 0.00001
+LEARNING_RATE = 0.001
 EPOCH = 50
 LR_DOWN_EPOCH = 5
-train = "Flow"
+train = "Conv"
 true_note = True
-model = "models/npy/pitch/model-5-epoch"
+model = "../models/npy/pitch/model-5-epoch"
 
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                         torchvision.transforms.Normalize((0.5,), (0.5,))])
-train_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?[0134579].npy"), transform=trans)
+train_dataset = Dataset.RecDataset(file_list=glob.glob("../ImageData/**/**/img/**/**/0?[0134579].npy"), transform=trans)
 print("train data : ", len(train_dataset))
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
-val_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?[26].npy"), transform=trans)
+val_dataset = Dataset.RecDataset(file_list=glob.glob("../ImageData/**/**/img/**/**/0?[26].npy"), transform=trans)
 print("val data : ", len(val_dataset))
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-test_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?8.npy"), transform=trans)
+test_dataset = Dataset.RecDataset(file_list=glob.glob("../ImageData/**/**/img/**/**/0?8.npy"), transform=trans)
 print("test data : ", len(test_dataset))
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 

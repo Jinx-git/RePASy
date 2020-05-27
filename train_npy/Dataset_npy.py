@@ -25,9 +25,9 @@ class RecDataset(data.Dataset):
         img = self.transform(img)
         # img = img / img.max()
         # print(img)
-        label = (float(img_path[22:27]) - 0.5) / 0.1
-        note_oh = one_hot(torch.tensor(self.note.index(img_path[15:17])), num_classes=13)
-        note = self.note.index(img_path[15:17])
+        label = (float(img_path[25:30]) - 0.5) / 0.1
+        note_oh = one_hot(torch.tensor(self.note.index(img_path[18:20])), num_classes=13)
+        note = self.note.index(img_path[18:20])
 
         """画像ベース
         img = np.array(Image.open(img_path))
