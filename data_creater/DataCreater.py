@@ -2,10 +2,8 @@ import numpy as np
 import glob
 import librosa
 import librosa.display
-import sys
 from PIL import Image
 import os
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 SAMPLING_FREQUENCY = 44100
@@ -33,11 +31,11 @@ def generate_image(path, sr, img_path, n_mels=128):
             crop_component = component[n*128:(n+1)*128, :]
             if data == "npy":
                 np.save("{}/{:03d}".format(img_path, 20*i+n), crop_component)
-                return
-            crop_component = crop_component / crop_component.max() * 255 // 1
-            image = Image.fromarray(crop_component.T)
-            image = image.convert("L")
-            image.save("{}/{:03d}.png".format(img_path, 20*i+n))
+            else:
+                crop_component = crop_component / crop_component.max() * 255 // 1
+                image = Image.fromarray(crop_component.T)
+                image = image.convert("L")
+                image.save("{}/{:03d}.png".format(img_path, 20*i+n))
 
 
 basename = os.path.basename(DATA_PATH)
