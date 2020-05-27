@@ -8,3 +8,5 @@ models/
 HumanData/
 
 *.m
+
+ImageData_old/
