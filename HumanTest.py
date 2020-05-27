@@ -47,11 +47,15 @@ class Net(nn.Module):
         self.conv = nn.Sequential(nn.Conv2d(1, 4, 8),
                                   nn.BatchNorm2d(4),
                                   nn.ReLU(),
-                                  nn.MaxPool2d(2, stride=2),
+                                  nn.Conv2d(4, 4, 2, stride=2),
+                                  nn.ReLU(),
+                                  # nn.MaxPool2d(2, stride=2),
                                   nn.Conv2d(4, 8, 8),
                                   nn.BatchNorm2d(8),
                                   nn.ReLU(),
-                                  nn.MaxPool2d(2, stride=2)
+                                  nn.Conv2d(8, 8, 2, stride=2),
+                                  nn.ReLU()
+                                  # nn.MaxPool2d(2, stride=2)
                                   )
 
         self.note = nn.Sequential(nn.Linear(5408, 2048),
@@ -81,7 +85,7 @@ class Net(nn.Module):
 
 device = torch.device("cpu")
 net = Net()
-net.load_state_dict(torch.load("testmodel.m", map_location=torch.device("cpu")))
+net.load_state_dict(torch.load("testmodel-nopool.m", map_location=torch.device("cpu")))
 net.eval()
 criterion1 = nn.MSELoss()
 weight = torch.tensor([5200, 4200, 5200, 6200, 6000, 8000, 7000, 7000, 6000, 6000, 7000, 6000, 6000])

@@ -10,12 +10,15 @@ from tqdm import tqdm
 
 SAMPLING_FREQUENCY = 44100
 NUMBER_MEL = 128
-DATA_PATH = "Data/rec1"
+DATA_PATH = "E:/RePASy/Data/rec1"
+data = "npy"
 
 
 def extract_logmel(wav, sr, n_mels=128): #Output -> (timeframe, logmel_dim)
     audio, _ = librosa.load(wav, sr=sr)
     logmel = librosa.feature.melspectrogram(y=audio, sr=sr, n_mels=n_mels, hop_length=172).T
+    if data == "npy":
+        logmel = librosa.power_to_db(logmel, ref=np.max)
     return logmel
 
 
@@ -28,6 +31,9 @@ def generate_image(path, sr, img_path, n_mels=128):
         component = extract_logmel(wavname, sr=sr, n_mels=128)
         for n in range(0, component.shape[0]//128):
             crop_component = component[n*128:(n+1)*128, :]
+            if data == "npy":
+                np.save("{}/{:03d}".format(img_path, 20*i+n), crop_component)
+                return
             crop_component = crop_component / crop_component.max() * 255 // 1
             image = Image.fromarray(crop_component.T)
             image = image.convert("L")
@@ -36,7 +42,7 @@ def generate_image(path, sr, img_path, n_mels=128):
 
 basename = os.path.basename(DATA_PATH)
 print("BaseName : " + basename)
-img_path = os.path.join("ImageData/np", basename)
+img_path = os.path.join("ImageData", basename)
 if not os.path.exists(img_path):
     os.mkdir(img_path)
 
@@ -47,9 +53,7 @@ for note_path in tqdm(note_list):
     if not os.path.exists(img_note_path):
         os.mkdir(img_note_path)
         os.mkdir(img_note_path + "/img")
-        os.mkdir(img_note_path + "/Visible_Image")
     img_note_data_path = os.path.join(img_note_path, "img")
-    img_note_visible_path = os.path.join(img_note_path, "Visible_Image")
 
     flow_list = glob.glob(note_path + "/*")
     for flow_path in tqdm(flow_list):
