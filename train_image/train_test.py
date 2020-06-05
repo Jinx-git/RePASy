@@ -1,57 +1,19 @@
 import torch
 import torch.onnx
 import torch.nn as nn
+from RePASy.train_image.model_img import Net
 import glob
 from torch.utils.data import DataLoader
 import torchvision
-from RePASy.train_image import Dataset
+from RePASy.train_image import dataset_img
 
 BATCH_SIZE = 1
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-test_dataset = Dataset.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?8.png"), transform=trans)
+test_dataset = dataset_img.RecDataset(file_list=glob.glob("ImageData/**/**/img/**/**/0?8.png"), transform=trans)
 print("test data : ", len(test_dataset))
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv = nn.Sequential(nn.Conv2d(1, 4, 8),
-                                  nn.BatchNorm2d(4),
-                                  nn.ReLU(),
-                                  nn.MaxPool2d(2, stride=2),
-                                  nn.Conv2d(4, 8, 8),
-                                  nn.BatchNorm2d(8),
-                                  nn.ReLU(),
-                                  nn.MaxPool2d(2, stride=2)
-                                  )
-
-        self.note = nn.Sequential(nn.Linear(5408, 2048),
-                                  nn.ReLU(),
-                                  nn.Dropout(p=0.5),
-                                  nn.Linear(2048, 13))
-
-        self.flow1 = nn.Sequential(nn.Linear(5408, 10),
-                                   nn.ReLU())
-
-        self.flow2 = nn.Sequential(nn.Linear(23, 1),
-                                   nn.Sigmoid())
-
-    def forward(self, x1, x2, t_note):
-        x = self.conv(x1)
-        x = x.view(x.size()[0], -1)
-        flow = self.flow1(x)
-        note = self.note(x)
-        if t_note:
-            flow = self.flow2(torch.cat([flow, x2], dim=1))
-        else:
-            _, note_oh = torch.max(note.data, 1)
-            # print(note_oh)
-            flow = self.flow2(torch.cat([flow, torch.eye(13)[note_oh].to("cuda:0")], dim=1))
-        return flow, note
-
-
 device = torch.device("cuda:0")
-# net = Net()
 net = torch.load("models/conv2d_FP/Flow2cmp/model-50-epoch")
 net = net.to(device)
 
@@ -94,8 +56,3 @@ print("[Flow : {}] loss:{:.7g}  mae:{:.7g}".format("Test", e_loss, e_mae))
 e_loss = sum_loss2 / len(test_loader.dataset)
 e_acc = sum_corrects.double() / len(test_loader.dataset)
 print("[Pitch : {}] loss:{:.7g}  acc:{:.7g}".format("Test", e_loss, e_acc))
-
-
-
-
-

@@ -1,10 +1,8 @@
-from torch.utils import data
-import torchvision
-from PIL import Image
-import glob
-import numpy as np
-from torch.nn.functional import one_hot
 import torch
+from torch.nn.functional import one_hot
+from torch.utils import data
+from PIL import Image
+import numpy as np
 
 
 class RecDataset(data.Dataset):
@@ -21,16 +19,11 @@ class RecDataset(data.Dataset):
 
         img_path = self.file_list[index]
         img = np.array(Image.open(img_path))
+
         img = self.transform(img)
-        # print(img)
-        # img = img.sum(axis=2) / 255.0 / 128.0
-        img = img / 255.0
-        # img = img[:, :, 0]
-        label = (float(img_path[22:27]) - 0.5) / 0.1
-        note_oh = one_hot(torch.tensor(self.note.index(img_path[15:17])), num_classes=13)
-        note = self.note.index(img_path[15:17])
-        #print(note)
-        #print(label)
-        #label = (float(img_path[27:31]))
-        label = np.array(label)
+        label = (float(img_path[25:30]) - 0.5) / 0.1
+
+        note_oh = one_hot(torch.tensor(self.note.index(img_path[18:20])), num_classes=13)
+        note = self.note.index(img_path[18:20])
+
         return img, label, note_oh.float(), note

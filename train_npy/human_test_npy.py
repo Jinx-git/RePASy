@@ -7,6 +7,9 @@ from PIL import Image
 import glob
 import numpy as np
 import torch
+from RePASy.train_npy import model_npy
+
+dev = "cuda"
 
 
 class RecDataset(data.Dataset):
@@ -22,21 +25,26 @@ class RecDataset(data.Dataset):
     def __getitem__(self, index):
 
         img_path = self.file_list[index]
-        img = np.array(Image.open(img_path))
-        flow = str(img_path[22])
+        # print(img_path)
+        img = np.load(img_path)
         img = self.transform(img)
-        note = self.note.index(img_path[14:16])
-        img = img / 255.0
-        img_number = int(img_path[24:27])
-        mic = str(img_path[17:21])
+
+        note = self.note.index(img_path[17:19])
+        flow = str(img_path[25])
+        img_number = int(img_path[27:30])
+        mic = str(img_path[20:24])
+
+        # print(note, flow, img_number, mic)
+
         return img, flow, img_number, note, mic
 
 
 BATCH_SIZE = 1
 ACC_NUMBER = 0
 
-trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-test_dataset = RecDataset(file_list=glob.glob("HumanData/img/**/**/**/**.png"), transform=trans)
+trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+                                        torchvision.transforms.Normalize((0.5,), (0.5,))])
+test_dataset = RecDataset(file_list=glob.glob("../HumanData/img/**/**/**/**.npy"), transform=trans)
 print("test data : ", len(test_dataset))
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
@@ -82,10 +90,14 @@ class Net(nn.Module):
             flow = self.flow2(torch.cat([flow, torch.eye(13)[note_oh].to("cpu")], dim=1))
         return flow, note
 
+if dev == "cpu":
+    device = torch.device("cpu")
+    net = Net()
+    net.load_state_dict(torch.load("testmodel-nopool.m", map_location=torch.device("cpu")))
+elif dev == "cuda":
+    device = torch.device("cuda")
+    net = torch.load("../models/npy_samemodel_img/flow/model-10-epoch")
 
-device = torch.device("cpu")
-net = Net()
-net.load_state_dict(torch.load("testmodel-nopool.m", map_location=torch.device("cpu")))
 net.eval()
 criterion1 = nn.MSELoss()
 weight = torch.tensor([5200, 4200, 5200, 6200, 6000, 8000, 7000, 7000, 6000, 6000, 7000, 6000, 6000])
