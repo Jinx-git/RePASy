@@ -15,15 +15,15 @@ from RePASy.train_npy.model_npy import Net
 # 学習進捗監視用ライブラリ
 from tqdm import tqdm
 
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 WEIGHT_DECAY = 0.005
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.001
 EPOCH = 50
 LR_DOWN_EPOCH = 5
-train = "Pitch"
+train = "Flow"
 true_note = True
-load_model_dir = "../models/npy/conv/model-5-epoch"
-save_model_dir = "../models/npy/pitch"
+load_model_dir = "../models/npy_samemodel_img/pitch/model-10-epoch"
+save_model_dir = "../models/npy_samemodel_img/flow"
 first = False
 
 # datasetの読み込み
@@ -175,42 +175,48 @@ plt.figure(figsize=(6, 6))
 
 if train == "Flow" or train == "Conv":
     plt.plot(range(1, EPOCH), loss1_value["train"][1:])
-    plt.plot(range(EPOCH), loss1_value["val"], c='#00ff00')
+    plt.plot(range(1, EPOCH), loss1_value["val"][1:], c='#00ff00')
     plt.xlim(0, EPOCH)
     plt.xlabel('EPOCH')
     plt.ylabel('MSE')
     plt.legend(['train loss1', "val loss1"])
-    plt.title('loss1')
-    plt.savefig(save_model_dir + "/loss1_image.png")
+    plt.title('loss')
+    if train == "Flow":
+        plt.savefig(save_model_dir + "/flow_loss.png")
+    else:
+        plt.savefig(save_model_dir + "/conv_loss.png")
     plt.clf()
 
     plt.plot(range(1, EPOCH), mae_value["train"][1:])
-    plt.plot(range(EPOCH), mae_value["val"], c='#00ff00')
+    plt.plot(range(1, EPOCH), mae_value["val"][1:], c='#00ff00')
     plt.xlim(0, EPOCH)
     plt.xlabel('EPOCH')
     plt.ylabel('MAE')
     plt.legend(['train mae', "val mae"])
     plt.title('mae')
-    plt.savefig(save_model_dir + "/mae_image.png")
+    if train == "Flow":
+        plt.savefig(save_model_dir + "/flow_mae.png")
+    else:
+        plt.savefig(save_model_dir + "/conv_mae.png")
     plt.clf()
 
 elif train == "Pitch":
     plt.plot(range(1, EPOCH), loss2_value["train"][1:])
-    plt.plot(range(EPOCH), loss2_value["val"], c='#00ff00')
+    plt.plot(range(1, EPOCH), loss2_value["val"][1:], c='#00ff00')
     plt.xlim(0, EPOCH)
     plt.xlabel('EPOCH')
     plt.ylabel('CROSS_ENTROPY_ERROR')
     plt.legend(['train loss2', "val loss2"])
-    plt.title('loss2')
-    plt.savefig(save_model_dir + "/loss2_image.png")
+    plt.title('loss')
+    plt.savefig(save_model_dir + "/pitch_loss.png")
     plt.clf()
 
     plt.plot(range(1, EPOCH), acc_value["train"][1:])
-    plt.plot(range(EPOCH), acc_value["val"], c='#00ff00')
+    plt.plot(range(1, EPOCH), acc_value["val"][1:], c='#00ff00')
     plt.xlim(0, EPOCH)
     plt.xlabel('EPOCH')
     plt.ylabel('ACC')
     plt.legend(['train acc', "val acc"])
     plt.title('acc')
-    plt.savefig(save_model_dir + "/acc_image.png")
+    plt.savefig(save_model_dir + "/pitch_acc.png")
     plt.clf()
