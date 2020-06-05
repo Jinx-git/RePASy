@@ -12,3 +12,4 @@ HumanData/
 ImageData_old/
 
 *.png
+*.npy

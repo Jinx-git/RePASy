@@ -15,28 +15,28 @@ from RePASy.train_image.model_img import Net
 # 学習進捗監視用ライブラリ
 from tqdm import tqdm
 
-BATCH_SIZE = 256
+BATCH_SIZE = 64
 WEIGHT_DECAY = 0.005
-LEARNING_RATE = 0.001
-EPOCH = 50
+LEARNING_RATE = 0.0001
+EPOCH = 100
 LR_DOWN_EPOCH = 5
-train = "Flow"
 true_note = True
-load_model_dir = "../models/conv2d_FP/Pitch/model-50-epoch"
-save_model_dir = "../models/hoge/conv"
-first = True
+load_model_dir = "../models/3ch_8channel_img/flow/model-50-epoch"
+save_model_dir = "../models/3ch_8channel_img/flow_2"
+train = "Flow"
+first = False
 
 # datasetの読み込み
 trans = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
-train_dataset = dataset.RecDataset(file_list=glob.glob("../ImageData/**/**/img/**/**/0?[0134579].png"), transform=trans)
+train_dataset = dataset.RecDataset(file_list=glob.glob("../ImageData/3ch_/**/img/**/**/0?[0134579].png"), transform=trans)
 print("train data : ", len(train_dataset))
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 
-val_dataset = dataset.RecDataset(file_list=glob.glob("../ImageData/**/**/img/**/**/0?[26].png"), transform=trans)
+val_dataset = dataset.RecDataset(file_list=glob.glob("../ImageData/3ch_/**/img/**/**/0?[26].png"), transform=trans)
 print("val data : ", len(val_dataset))
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-test_dataset = dataset.RecDataset(file_list=glob.glob("../ImageData/**/**/img/**/**/0?8.png"), transform=trans)
+test_dataset = dataset.RecDataset(file_list=glob.glob("../ImageData/3ch_/**/img/**/**/0?8.png"), transform=trans)
 print("test data : ", len(test_dataset))
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
@@ -97,7 +97,7 @@ mae_value = {"train": [0.], "val": [], "test": []}
 acc_value = {"train": [0.], "val": [], "test": []}
 
 # 学習
-for epoch in range(EPOCH):
+for epoch in tqdm(range(EPOCH)):
     print("Epoch {}/{}".format(epoch+1, EPOCH))
     print('-------------')
 
@@ -119,7 +119,7 @@ for epoch in range(EPOCH):
             continue
 
         # iter
-        for (inputs, labels, notes_oh, notes) in tqdm(dataloaders_dict[phase]):
+        for (inputs, labels, notes_oh, notes) in dataloaders_dict[phase]:
 
             # Optimizerのリセット
             optimizer.zero_grad()
@@ -164,14 +164,13 @@ for epoch in range(EPOCH):
             print("[Pitch : {}] loss:{:.7g}  acc:{:.7g}".format(phase, e_loss, e_acc))
             loss2_value[phase].append(e_loss)
             acc_value[phase].append(e_acc)
-
     # 5epochごとに学習済みモデルを保存
     if not (epoch + 1) % 5:
-        torch.save(net, "model-{}-epoch".format(epoch + 1))
+        torch.save(net, save_model_dir + "/model-{}-epoch".format(epoch + 1))
     # 指定したepochごとにlrを減少
-    if not (epoch + 1) % LR_DOWN_EPOCH:
-        LEARNING_RATE = LEARNING_RATE / 2.
-        optimizer = optim.Adam(params=params_to_update, lr=LEARNING_RATE)
+    # if not (epoch + 1) % LR_DOWN_EPOCH:
+    #     LEARNING_RATE = LEARNING_RATE / 2.
+    #     optimizer = optim.Adam(params=params_to_update, lr=LEARNING_RATE)
 
 # 以下グラフ描画
 plt.figure(figsize=(6, 6))

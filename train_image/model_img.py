@@ -5,22 +5,30 @@ import torch.nn as nn
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv = nn.Sequential(nn.Conv2d(1, 4, 8),
+        self.conv = nn.Sequential(nn.Conv2d(3, 4, 5),
                                   nn.BatchNorm2d(4),
                                   nn.ReLU(),
                                   nn.MaxPool2d(2, stride=2),
-                                  nn.Conv2d(4, 8, 8),
+                                  nn.Conv2d(4, 8, 5),
                                   nn.BatchNorm2d(8),
+                                  nn.ReLU(),
+                                  nn.MaxPool2d(2, stride=2),
+                                  nn.Conv2d(8, 16, 3),
+                                  nn.BatchNorm2d(16),
+                                  nn.ReLU(),
+                                  nn.MaxPool2d(2, stride=2),
+                                  nn.Conv2d(16, 16, 3),
+                                  nn.BatchNorm2d(16),
                                   nn.ReLU(),
                                   nn.MaxPool2d(2, stride=2)
                                   )
 
-        self.note = nn.Sequential(nn.Linear(5408, 2048),
+        self.note = nn.Sequential(nn.Linear(10816, 2048),
                                   nn.ReLU(),
                                   nn.Dropout(p=0.5),
                                   nn.Linear(2048, 13))
 
-        self.flow1 = nn.Sequential(nn.Linear(5408, 10),
+        self.flow1 = nn.Sequential(nn.Linear(10816, 10),
                                    nn.ReLU())
 
         self.flow2 = nn.Sequential(nn.Linear(23, 1),
